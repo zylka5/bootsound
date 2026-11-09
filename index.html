@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boot Sound - startup sound for your radio</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--txt:#f1f5f9;--mut:#94a3b8;--acc:#22c55e;--acc2:#3b82f6;--err:#ef4444}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+.wrap{max-width:760px;margin:0 auto;padding:20px 14px 40px}
+header{margin:10px 0 18px}
+h1{font-size:26px;line-height:1.2;margin:0}
+h1 span{color:var(--acc)}
+.sub{color:var(--mut);font-size:14px;margin:8px 0 0;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+.card h2{font-size:17px;margin:0 0 4px}
+.card p{color:var(--mut);font-size:13px;margin:0 0 12px;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0}
+label{font-size:13px;color:var(--mut)}
+select,input[type=file]{background:#0f172a;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px}
+select{flex:1;min-width:200px}
+button{border:0;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--acc);color:#052e16}
+.blue{background:var(--acc2);color:white}
+.ghost{background:#334155;color:white}
+.pill{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#334155}
+.pill.ok{background:#14532d;color:#bbf7d0}
+.progress{height:10px;background:#0f172a;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:10px 0}
+.progress>div{height:100%;background:var(--acc);width:0%;transition:width .2s}
+.log{background:#0f172a;border:1px solid var(--line);border-radius:10px;padding:10px;height:150px;overflow:auto;font-size:13px;line-height:1.5}
+.log div{margin:3px 0}
+.log .ok{color:#86efac}
+.log .err{color:#fca5a5}
+.fileinfo{font-size:13px;color:var(--mut)}
+audio{width:100%;margin-top:8px}
+.small{font-size:12px;color:var(--mut);line-height:1.5}
+.langrow{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.langrow button{padding:7px 12px}
+.langrow button.active{background:var(--acc);color:#052e16}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div class="langrow">
+<span class="small" data-i18n="language">Language:</span>
+<button id="langEnBtn" class="ghost">EN</button>
+<button id="langPlBtn" class="ghost">PL</button>
+</div>
+<h1>Boot Sound <span data-i18n="titleSuffix">- startup sound for your radio</span></h1>
+<p class="sub" data-i18n="subtitle">Quansheng UV-K5 / UV-K1 - FALCON, SONIC 1K / 4K, F4HWN. Choose a file, upload, done.</p>
+</header>
+<div class="card" id="downloadCard" style="border-color:#22c55e">
+<h2 data-i18n="download">⬇ Download</h2>
+<p data-i18n="downloadDesc">Firmware and example sounds from the same folder as this HTML file. Put .bin and audio files next to this HTML file and they will appear here as download links.</p>
+<div class="row" style="align-items:flex-start">
+<div style="flex:1;min-width:220px">
+<div style="font-weight:700;font-size:14px" data-i18n="downloadFw">Firmware - with boot sound function</div>
+<p class="small" style="margin:4px 0 8px" data-i18n="downloadFwDesc">Flash in the standard way in UVStudio or in a multiboot slot.</p>
+<ul id="fwList" class="small" style="margin:0;padding-left:18px;line-height:1.8"></ul>
+<div id="fwEmpty" class="small" data-i18n="downloadNoFw">No .bin files found in this folder yet.</div>
+</div>
+<div style="flex:1;min-width:220px">
+<div style="font-weight:700;font-size:14px" data-i18n="downloadAudio">Example sounds to convert</div>
+<p class="small" style="margin:4px 0 8px" data-i18n="downloadAudioDesc">Click to download, then choose it in step 2.</p>
+<ul id="audioList" class="small" style="margin:0;padding-left:18px;line-height:1.8"></ul>
+<div id="audioEmpty" class="small" data-i18n="downloadNoAudio">No example audio files found in this folder yet.</div>
+</div>
+</div>
+<div class="row">
+<button id="scanFolderBtn" class="ghost" data-i18n="downloadScan">Scan folder again</button>
+<button id="chooseFolderBtn" class="ghost" data-i18n="downloadChooseFolder">Choose folder with files…</button>
+<input type="file" id="folderPicker" webkitdirectory directory multiple style="display:none">
+</div>
+<div class="small" id="dlHint" data-i18n="downloadHint">Tip: if you open this file via file:// the browser cannot list the folder - use “Choose folder with files…” or open it via a local server (e.g. python -m http.server).</div>
+</div>
+
+
+<div class="card">
+<h2 data-i18n="step1">1. Connect radio</h2>
+<p data-i18n="step1Desc">Connect the radio with a USB cable, turn it on in normal mode. If the port is busy, close the other program and unplug the cable for 2 seconds.</p>
+<div class="row">
+<button id="connectBtn" class="blue" data-i18n="connect">Connect radio</button>
+<button id="disconnectBtn" class="ghost" disabled data-i18n="disconnect">Disconnect</button>
+<span id="devStatus" class="pill" data-i18n="notConnected">Not connected</span>
+</div>
+<div class="row">
+<label data-i18n="firmware">Firmware:</label>
+<select id="fwMode">
+<option value="auto" selected data-i18n="fwAuto">Auto-detect (recommended)</option>
+<option value="sonic1k">SONIC 1K</option>
+<option value="sonic4k">SONIC 4K</option>
+<option value="falcon">FALCON 4K</option>
+<option value="falcon1k">FALCON 1K</option>
+<option value="f4hwn">F4HWN</option>
+</select>
+</div>
+<div class="row">
+<label data-i18n="speed">Speed:</label>
+<select id="baudSelect"><option value="38400" selected>38400</option><option value="115200">115200</option><option value="9600">9600</option></select>
+<span class="small" id="fwLabel"></span>
+</div>
+</div>
+
+<div class="card">
+<h2 data-i18n="step2">2. Choose sound</h2>
+<p data-i18n="step2Desc">MP3, WAV or other audio file. The preview shows the full file, upload will be trimmed to the set limits.</p>
+<div class="row"><input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac"></div>
+<div id="fileInfo" class="fileinfo" data-i18n="noFile">No file selected.</div>
+<canvas id="waveCanvas" width="720" height="120" style="width:100%;height:120px;background:#0f172a;border:1px solid #334155;border-radius:10px;display:none;cursor:crosshair;touch-action:none"></canvas>
+<div id="waveHint" class="small" style="display:none" data-i18n="waveHint">Drag on the waveform to select a fragment to upload. Click without dragging to listen from that point.</div>
+<div id="selBox" style="display:none;margin-top:8px">
+<div id="selInfo" class="small">Selected: whole file</div>
+<div class="row"><button id="playSelBtn" class="ghost" data-i18n="playSel">Play selected</button><button id="clearSelBtn" class="ghost" data-i18n="clearSel">Clear selection (whole)</button></div>
+</div>
+<audio id="preview" controls style="display:none"></audio>
+</div>
+
+<div class="card">
+<h2 data-i18n="settings">Upload settings</h2>
+<p data-i18n="settingsDesc">Address and size must match your firmware. If you don't know, leave defaults.</p>
+<div class="row">
+<label data-i18n="addrLabel">Start address:</label>
+<select id="addrSelect">
+<option value="0x012000" selected data-i18n="addr012">0x012000 - default (free area)</option>
+<option value="0x013000" data-i18n="addr013">0x013000 - standard (boot sound)</option>
+<option value="custom" data-i18n="addrCustomOpt">Custom…</option>
+</select>
+<input id="addrCustom" placeholder="e.g. 0x012000" style="display:none;flex:1">
+</div>
+<div class="row">
+<label data-i18n="sizeLabel">File size:</label>
+<select id="sizeMode">
+<option value="free" selected data-i18n="sizeFree">Free - 24 KiB (0x012000-0x017FFF) - does not touch logs</option>
+<option value="enlarged" data-i18n="sizeEnlarged">Enlarged Free+Log - 56 KiB (0x012000-0x01FFFF) - overwrites logs</option>
+</select>
+</div>
+<div class="row"><span class="small" id="sizeInfo"></span></div>
+</div>
+
+<div class="card">
+<h2 data-i18n="step3">3. Upload</h2>
+<p data-i18n="step3Desc">Uploading will overwrite the old startup sound.</p>
+<div class="row">
+<button id="uploadBtn" class="primary" disabled data-i18n="upload">Upload startup sound</button>
+<button id="verifyBtn" class="ghost" disabled data-i18n="verify">Verify upload</button>
+</div>
+<div class="row">
+<button id="checkHeaderBtn" class="ghost" disabled data-i18n="checkSound">Check sound in radio</button>
+<button id="clearBootBtn" class="ghost" disabled data-i18n="clearOld">Clear old sound</button>
+</div>
+<p class="small" style="color:#fde68a" data-i18n="ponmsgNote">After upload, on the radio: MENU -&gt; POnMsg -&gt; Logo (or Default). If POnMsg is OFF / Message / Full, the radio will not play the sound at startup.</p>
+<div class="progress"><div id="progBar"></div></div>
+<div id="progText" class="small"></div>
+</div>
+
+<div class="card">
+<h2 data-i18n="status">Status</h2>
+<div class="log" id="log"></div>
+</div>
+<p class="small" data-i18n="footer">Sound playback is supported only by SONIC firmware after setting option 30 to Logo: MENU -&gt; POnMsg -&gt; Logo</p>
+</div>
+
+<script>
+const I18N={
+en:{
+language:"Language:",titleSuffix:"- startup sound for your radio",subtitle:"Quansheng UV-K5 / UV-K1 - FALCON, SONIC 1K / 4K, F4HWN. Choose a file, upload, done.",
+step1:"1. Connect radio",step1Desc:"Connect the radio with a USB cable, turn it on in normal mode. If the port is busy, close the other program and unplug the cable for 2 seconds.",
+connect:"Connect radio",disconnect:"Disconnect",notConnected:"Not connected",firmware:"Firmware:",fwAuto:"Auto-detect (recommended)",speed:"Speed:",
+step2:"2. Choose sound",step2Desc:"MP3, WAV or other audio file. The preview shows the full file, upload will be trimmed to the set limits.",noFile:"No file selected.",
+waveHint:"Drag on the waveform to select a fragment to upload. Click without dragging to listen from that point.",playSel:"Play selected",clearSel:"Clear selection (whole)",
+settings:"Upload settings",settingsDesc:"Address and size must match your firmware. If you don't know, leave defaults.",
+addrLabel:"Start address:",addr012:"0x012000 - default (free area)",addr013:"0x013000 - standard (boot sound)",addrCustomOpt:"Custom…",
+sizeLabel:"File size:",sizeFree:"Free - 24 KiB (0x012000-0x017FFF) - does not touch logs",sizeEnlarged:"Enlarged Free+Log - 56 KiB (0x012000-0x01FFFF) - overwrites logs",
+step3:"3. Upload",step3Desc:"Uploading will overwrite the old startup sound.",upload:"Upload startup sound",verify:"Verify upload",checkSound:"Check sound in radio",clearOld:"Clear old sound",
+ponmsgNote:"After upload, on the radio: MENU -> POnMsg -> Logo (or Default). If POnMsg is OFF / Message / Full, the radio will not play the sound at startup.",
+status:"Status",download:"⬇ Download",downloadDesc:"Firmware and example sounds from the same folder as this HTML file. Put .bin and audio files next to this HTML file and they will appear here as download links.",downloadFw:"Firmware - with boot sound function",downloadFwDesc:"Flash in the standard way in UVStudio or in a multiboot slot.",downloadAudio:"Example sounds to convert",downloadAudioDesc:"Click to download, then choose it in step 2.",downloadScan:"Scan folder again",downloadChooseFolder:"Choose folder with files…",downloadNoFw:"No .bin files found in this folder yet.",downloadNoAudio:"No example audio files found in this folder yet.",downloadHint:"Tip: if you open this file via file:// the browser cannot list the folder - use “Choose folder with files…” or open it via a local server (e.g. python -m http.server).",
+footer:"Sound playback is supported only by SONIC firmware after setting option 30 to Logo: MENU -> POnMsg -> Logo",
+ready:"Ready. Connect the radio, choose a sound and upload.",noSerial:"This browser does not support Web Serial. Use Chrome or Edge on a computer.",
+connecting:"Connecting…",connected:"Connected. Checking firmware…",noPort:"No port selected. Click Connect and choose the radio from the list.",connectFail:"Failed to connect: ",
+needRadio:"Connect the radio first.",needFile:"Choose a sound first.",busy:"Busy - wait for the previous operation to finish.",
+converting:"Converting: ",convertFail:"Failed to read the file: ",readyFile:"Ready: ",
+uploading:"Uploading ",toAddr:" to address 0x",verifying:"Verifying…",verifyOk:"Verification OK - the sound is in the radio.",verifyFail:"Verification: bytes differ.",
+doneRestart:"Verification OK. Sending restart - the radio will restart, this is normal, do not unplug the cable.",done:"Done! After restart the radio will play the new sound.",
+uploadFail:"Failed to upload: ",checkHeaderOk:"Header looks good. If still silent, check POnMsg = Logo / Default on the radio.",
+checkHeaderBad:"This is the old bad header (zeros after SYRS) - upload again with the new version, the program will try to erase sectors before writing.",
+noSyrs:"No SYRS at ",headerInRadio:"Header in radio: SYRS, version ",rateOk:" OK",rateBad:" BAD - should be 1",lenOk:" OK",lenBad:" BAD - should be >0",
+clearOldConfirm:"Clear the old sound in the radio? The SYRS header will be erased, the radio will return to the default beep.",
+cleared:"Cleared. You can now upload a new sound.",clearFail:"The radio did not answer erase 0x0521 - this firmware may not support erase. Try uploading via UVStudio / flash.js, which also erases.",
+areaEmpty:"Area is empty (all FF) - writing directly.",areaNotEmpty:"Area is not empty - old sound. Trying to erase sectors (0x0521) before writing, because without erase the old zero header would zero the new header (AND).",
+erased:"Erased ",sectors:" sectors - write will be clean.",noErase:"The radio does not support erase 0x0521 (no answer, normal in SONIC/FALCON) - uploading without erase.",
+fragment:" fragment ",to:" to ",selInfoWhole:"Selected: whole file",selInfoFrag:"Selected: ",selWillTrim:" - file will be trimmed to the limit.",selFits:" - fits fully.",selPlay:"Playing selected: ",
+selCleared:"Selection cleared - whole file will be uploaded.",selSet:"Selected fragment: ",selUpload:" - upload only this fragment.",
+sizeInfoFree:"Address 0x",sizeInfoEnd:" - Free PCM ",sizeInfoTotal:" B, total with header ",sizeInfoEnd2:" B, ends at 0x",
+disconnected:"Disconnected."
+},
+pl:{
+language:"Język:",titleSuffix:"- dźwięk startowy do radia",subtitle:"Quansheng UV-K5 / UV-K1 - FALCON, SONIC 1K / 4K, F4HWN. Wybierz plik, wgraj, gotowe.",
+step1:"1. Podłącz radio",step1Desc:"Podłącz radio kablem USB, włącz je w normalnym trybie. Jeśli port jest zajęty przez inny program, zamknij go i odłącz kabel na 2 sekundy.",
+connect:"Podłącz radio",disconnect:"Rozłącz",notConnected:"Nie połączono",firmware:"Firmware:",fwAuto:"Automatycznie wykryj (polecane)",speed:"Prędkość:",
+step2:"2. Wybierz dźwięk",step2Desc:"MP3, WAV lub inny plik audio. Podgląd pokazuje cały plik, wgrywanie będzie przycięte do ustawionych limitów.",noFile:"Nie wybrano pliku.",
+waveHint:"Przeciągnij myszką po wykresie, żeby zaznaczyć fragment do wgrania. Kliknij bez przeciągania, żeby posłuchać od tego miejsca.",playSel:"Odtwórz zaznaczone",clearSel:"Wyczyść zaznaczenie (całość)",
+settings:"Ustawienia wgrywania",settingsDesc:"Adres i wielkość muszą zgadzać się z Twoim firmware. Jak nie wiesz, zostaw domyślne.",
+addrLabel:"Adres początkowy:",addr012:"0x012000 - domyślny (wolny obszar)",addr013:"0x013000 - standardowy (boot sound)",addrCustomOpt:"Własny…",
+sizeLabel:"Wielkość zapisywanego pliku:",sizeFree:"Wolny - 24 KiB (0x012000-0x017FFF) - nie rusza logów",sizeEnlarged:"Powiększony Wolny+Log - 56 KiB (0x012000-0x01FFFF) - nadpisuje logi",
+step3:"3. Wgraj",step3Desc:"Wgrywanie nadpisze stary dźwięk startowy.",upload:"Wgraj dźwięk startowy",verify:"Sprawdź, czy się wgrało",checkSound:"Sprawdź dźwięk w radiu",clearOld:"Wyczyść stary dźwięk",
+ponmsgNote:"Po wgraniu w radiu: MENU -> POnMsg -> Logo (lub Default). Jak masz POnMsg = OFF / Message / Full, radio nie zagra dźwięku przy starcie.",
+status:"Status",download:"⬇ Pobierz",downloadDesc:"Firmware i przykładowe dźwięki z tego samego folderu co ten plik HTML. Wrzuć pliki .bin i audio obok tego pliku HTML, a pojawią się tu jako linki do pobrania.",downloadFw:"Firmware - z funkcją boot sound",downloadFwDesc:"Wgraj w standardowy sposób w UVStudio lub w slocie multiboot.",downloadAudio:"Przykładowe dźwięki do przekonwertowania",downloadAudioDesc:"Kliknij, żeby pobrać, potem wybierz go w kroku 2.",downloadScan:"Skanuj folder ponownie",downloadChooseFolder:"Wybierz folder z plikami…",downloadNoFw:"Nie znaleziono plików .bin w tym folderze.",downloadNoAudio:"Nie znaleziono przykładowych plików audio w tym folderze.",downloadHint:"Wskazówka: jak otwierasz ten plik przez file://, przeglądarka nie może wylistować folderu - użyj „Wybierz folder z plikami…” albo otwórz go przez lokalny serwer (np. python -m http.server).",
+footer:"Odtwarzanie dźwięku obsługuje tylko soft SONIC po ustawieniu w opcjach na pozycji 30 na Logo: MENU -> POnMsg -> Logo",
+ready:"Gotowy. Podłącz radio, wybierz dźwięk i wgraj.",noSerial:"Ta przeglądarka nie obsługuje Web Serial. Użyj Chrome lub Edge na komputerze.",
+connecting:"Łączę…",connected:"Połączono. Sprawdzam firmware…",noPort:"Nie wybrano portu. Kliknij Podłącz i wybierz radio z listy.",connectFail:"Nie udało się połączyć: ",
+needRadio:"Najpierw podłącz radio.",needFile:"Najpierw wybierz dźwięk.",busy:"Zajęty - poczekaj na koniec poprzedniej operacji.",
+converting:"Konwertuję: ",convertFail:"Nie udało się odczytać pliku: ",readyFile:"Gotowy: ",
+uploading:"Wgrywam ",toAddr:" na adres 0x",verifying:"Sprawdzam…",verifyOk:"Weryfikacja OK - dźwięk jest w radiu.",verifyFail:"Weryfikacja: bajty różnią się.",
+doneRestart:"Weryfikacja OK. Wysyłam restart - radio się zrestartuje, to normalne, nie odłączaj kabla.",done:"Gotowe! Po restarcie radio zagra nowy dźwięk.",
+uploadFail:"Nie udało się wgrać: ",checkHeaderOk:"Nagłówek wygląda dobrze. Jeśli dalej cisza, sprawdź w radiu POnMsg = Logo / Default.",
+checkHeaderBad:"To jest stary zły nagłówek (same zera po SYRS) - wgraj ponownie nową wersją, a program spróbuje skasować sektory przed zapisem.",
+noSyrs:"W radiu nie ma SYRS na 0x",headerInRadio:"Nagłówek w radiu: SYRS, wersja ",rateOk:" OK",rateBad:" ZŁA - powinna być 1",lenOk:" OK",lenBad:" ZŁA - powinno być >0",
+clearOldConfirm:"Wyczyścić stary dźwięk w radiu? Nagłówek SYRS zostanie skasowany, radio wróci do domyślnego beep.",
+cleared:"Wyczyszczono. Możesz teraz wgraj nowy dźwięk.",clearFail:"Radio nie odpowiedziało na kasowanie 0x0521 - ten firmware może nie obsługiwać kasowania. Spróbuj wgraj przez UVStudio / flash.js, które też kasuje.",
+areaEmpty:"Obszar pusty (same FF) - piszę od razu.",areaNotEmpty:"Obszar nie był pusty - to stary dźwięk. Próbuję skasować sektory (0x0521) przed zapisem, bo bez kasowania stary nagłówek z zerami wyzeruje nowy nagłówek (AND).",
+erased:"Skasowano ",sectors:" sektorów - zapis będzie czysty.",noErase:"Radio nie obsługuje kasowania 0x0521 (brak odpowiedzi, to normalne w SONIC/FALCON) - wgrywam bez kasowania.",
+fragment:" fragment ",to:" do ",selInfoWhole:"Zaznaczone: całość",selInfoFrag:"Zaznaczone: ",selWillTrim:" - plik będzie przycięty do limitu.",selFits:" - zmieści się w całości.",selPlay:"Odtwarzam zaznaczone: ",
+selCleared:"Wyczyszczono zaznaczenie - będzie wgrywana całość.",selSet:"Zaznaczono fragment: ",selUpload:" - wgraj tylko ten fragment.",
+sizeInfoFree:"Adres 0x",sizeInfoEnd:" - Free PCM ",sizeInfoTotal:" B, razem z nagłówkiem ",sizeInfoEnd2:" B, koniec na 0x",
+disconnected:"Rozłączono."
+}
+};
+let curLang = (navigator.language||'en').toLowerCase().startsWith('pl') ? 'pl' : 'en';
+function T(key){ return (I18N[curLang]&&I18N[curLang][key]) || I18N.en[key] || key; }
+function applyLang(lang){
+  curLang=lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    if(I18N[lang]&&I18N[lang][k]) el.textContent=I18N[lang][k];
+  });
+  $('langEnBtn').classList.toggle('active', lang==='en');
+  $('langPlBtn').classList.toggle('active', lang==='pl');
+  $('langEnBtn').textContent='EN'; $('langPlBtn').textContent='PL';
+  if($('addrCustom')) $('addrCustom').placeholder = lang==='pl' ? 'np. 0x012000' : 'e.g. 0x012000';
+  updateSizeInfo(); updateSelInfo();
+  document.documentElement.lang=lang;
+}
+
+const OBFUS=[0x16,0x6C,0x14,0xE6,0x2E,0x91,0x0D,0x40,0x21,0x35,0xD5,0x40,0x13,0x03,0xE9,0x80];
+const MSG_HELLO=0x0514, MSG_HELLO_RESP=0x0515, MSG_READ=0x051B, MSG_READ_RESP=0x051C, MSG_WRITE=0x051D, MSG_WRITE_RESP=0x051E, MSG_RESET=0x05DD;
+const F_READ=0x0738, F_READ_RESP=0x0739, F_ERASE=0x073A, F_ERASE_RESP=0x073B, F_WRITE=0x073C, F_WRITE_RESP=0x073D;
+const SPI_WRITE=0x0521, SPI_WRITE_RESP=0x0522;
+const TS=0x6457396A;
+const CHUNK=128;
+let port=null, writer=null, readBuffer=[], sessionTs=TS, sessionFw='', detectedMode='sonic1k', pcmU8=null, pcmName='', isBusy=false;
+let selStart=0, selEnd=1, selDragging=false, selDragStart=0;
+let lastProg=0;
+const $=id=>document.getElementById(id);
+function log(m, kind=''){ const d=document.createElement('div'); if(kind) d.className=kind; d.textContent=m; $('log').appendChild(d); $('log').scrollTop=$('log').scrollHeight; }
+function setProg(p, t=''){ p=Math.max(0,Math.min(100,p)); if(p<lastProg && p!==0) p=lastProg; if(p===0 && lastProg>0 && t!=='') p=lastProg; lastProg=p; $('progBar').style.width=p+'%'; if(t) $('progText').textContent=t; }
+function resetProg(){ lastProg=0; $('progBar').style.width='0%'; $('progText').textContent=''; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function ascii(a){ let s=''; for(const b of a){ if(b<32||b>126) break; s+=String.fromCharCode(b); } return s; }
+function parseAddr(){ if($('addrSelect').value==='custom'){ const v=parseInt($('addrCustom').value,16); if(isNaN(v)) throw new Error('Bad custom address'); return v; } return parseInt($('addrSelect').value,16); }
+function createMessage(t,len){ const m=new Uint8Array(4+len); const v=new DataView(m.buffer); v.setUint16(0,t,true); v.setUint16(2,len,true); return m; }
+function calcCRC(buf,off,size){ let C=0; for(let i=0;i<size;i++){ C^=(buf[off+i]&0xff)<<8; for(let j=0;j<8;j++) C=(C&0x8000)?((C<<1)^0x1021)&0xffff:(C<<1)&0xffff; } return C; }
+function obf(buf,off,size){ for(let i=0;i<size;i++) buf[off+i]^=OBFUS[i%16]; }
+function makePacket(msg){ let ml=msg.length; if(ml%2) ml++; const buf=new Uint8Array(8+ml); const v=new DataView(buf.buffer); v.setUint16(0,0xCDAB,true); v.setUint16(2,ml,true); for(let i=0;i<msg.length;i++) buf[4+i]=msg[i]; v.setUint16(4+ml,calcCRC(buf,4,ml),true); v.setUint16(6+ml,0xBADC,true); obf(buf,4,2+ml); return buf; }
+function fetchMessage(buf){
+  if(buf.length<8) return null; let pb=-1; for(let i=0;i<buf.length-1;i++){ if(buf[i]===0xab&&buf[i+1]===0xcd){pb=i;break;} }
+  if(pb===-1){ buf.length=0; return null; } if(buf.length-pb<8) return null;
+  const ml=(buf[pb+3]<<8)|buf[pb+2]; const pe=pb+6+ml; if(buf.length<pe+2) return null;
+  if(buf[pe]!==0xdc||buf[pe+1]!==0xba){ buf.splice(0,pb+2); return null; }
+  const mb=new Uint8Array(ml+2); for(let i=0;i<ml+2;i++) mb[i]=buf[pb+4+i]; obf(mb,0,ml+2);
+  const mt=new DataView(mb.buffer).getUint16(0,true); buf.splice(0,pe+2);
+  return {msgType:mt, data:mb.slice(4,4+ml-2)};
+}
+async function sendMessage(m){ await writer.write(makePacket(m)); }
+async function waitForMsg(type, timeoutMs){
+  const dl=Date.now()+timeoutMs;
+  while(Date.now()<dl){ await sleep(5); const m=fetchMessage(readBuffer); if(!m) continue; if(m.msgType===MSG_HELLO_RESP) continue; if(m.msgType===type) return m; }
+  return null;
+}
+async function readLoop(){ const r=port.readable.getReader(); try{ while(true){ const {value,done}=await r.read(); if(done) break; if(value) for(const b of value) readBuffer.push(b); } }catch(e){} finally{ r.releaseLock(); } }
+async function connect(){
+  const baud=parseInt($('baudSelect').value,10);
+  port=await navigator.serial.requestPort();
+  await port.open({baudRate:baud, dataBits:8, stopBits:1, parity:'none'});
+  writer=port.writable.getWriter(); readLoop();
+  $('connectBtn').disabled=true; $('disconnectBtn').disabled=false;
+  $('uploadBtn').disabled=!pcmU8; $('verifyBtn').disabled=!pcmU8; $('checkHeaderBtn').disabled=false; $('clearBootBtn').disabled=false;
+  log(T('connected'));
+  const s=await requestDeviceInfo(); detectMode(s.firmware); updateModeUI();
+}
+async function disconnect(){
+  try{ await writer.close(); await port.close(); }catch(e){}
+  port=null; isBusy=false; $('connectBtn').disabled=false; $('disconnectBtn').disabled=true; $('uploadBtn').disabled=true; $('verifyBtn').disabled=true; $('checkHeaderBtn').disabled=true; $('clearBootBtn').disabled=true;
+  $('devStatus').textContent=T('notConnected'); $('devStatus').className='pill'; log(T('disconnected'));
+}
+async function requestDeviceInfo(){
+  for(let a=1;a<=4;a++){
+    try{ if(port&&typeof port.setSignals==='function') await port.setSignals({dataTerminalReady:true, requestToSend:true}); }catch(e){}
+    readBuffer.length=0; const ts=TS;
+    const req=createMessage(MSG_HELLO,4); new DataView(req.buffer).setUint32(4,ts,true); await sendMessage(req);
+    const dl=Date.now()+4000;
+    while(Date.now()<dl){ await sleep(10); const resp=fetchMessage(readBuffer); if(!resp) continue; if(resp.msgType===MSG_HELLO_RESP){ const s=ascii(resp.data); sessionTs=ts; sessionFw=s; $('devStatus').textContent=s; $('devStatus').className='pill ok'; return {firmware:s}; } }
+  }
+  throw new Error('Radio does not answer. Check if it is on and no other program uses the port.');
+}
+function detectMode(fwRaw){
+  const fw=(fwRaw||'').toUpperCase(); const sel=$('fwMode').value;
+  if(sel!=='auto'){ detectedMode=sel; $('fwLabel').textContent='Selected: '+sel; return; }
+  if(fw.startsWith('FALCON')){
+    if(fw.includes('4K')||fw.includes('4096')){ detectedMode='falcon'; $('fwLabel').textContent='Detected: FALCON 4K'; }
+    else{ detectedMode='falcon1k'; $('fwLabel').textContent='Detected: '+fwRaw+' - treated as FALCON 1K'; }
+  } else if(fw.startsWith('SONIC')){
+    if(fw.includes('4K')||fw.includes('4096')){ detectedMode='sonic4k'; $('fwLabel').textContent='Detected: SONIC 4K'; }
+    else{ detectedMode='sonic1k'; $('fwLabel').textContent='Detected: '+fwRaw+' - treated as SONIC 1K'; }
+  } else if(fw.startsWith('F4HWN')){ detectedMode='f4hwn'; $('fwLabel').textContent='Detected: F4HWN'; }
+  else{ detectedMode='sonic1k'; $('fwLabel').textContent='Unknown, using SONIC 1K'; }
+  log('Firmware: '+(fwRaw||'?')+' - mode: '+detectedMode);
+}
+function updateModeUI(){}
+function sonicReadMsg(offset,len){ const m=createMessage(MSG_READ,12); const v=new DataView(m.buffer); v.setUint32(4,offset>>>0,true); m[8]=len; m[9]=0; m[10]=0; m[11]=0; v.setUint32(12,sessionTs>>>0,true); return m; }
+function sonicWriteMsg(offset,payload){ const m=createMessage(MSG_WRITE,12+payload.length); const v=new DataView(m.buffer); v.setUint32(4,offset>>>0,true); m[8]=payload.length; m[9]=1; m[10]=0; m[11]=0; v.setUint32(12,sessionTs>>>0,true); m.set(payload,16); return m; }
+async function sonicRead(offset,len){
+  for(let r=0;r<3;r++){ if(r>0) await sleep(120); readBuffer.length=0; await sendMessage(sonicReadMsg(offset,len)); const resp=await waitForMsg(MSG_READ_RESP,3500); if(!resp) continue; if(resp.data.length<6+len) continue; const rv=new DataView(resp.data.buffer,resp.data.byteOffset,resp.data.byteLength); if(rv.getUint32(0,true)!==(offset>>>0)||resp.data[4]!==len) continue; return resp.data.slice(6,6+len); }
+  return null;
+}
+async function sonicWrite(offset,payload){
+  for(let r=0;r<4;r++){ if(r>0) await sleep(150+r*100); readBuffer.length=0; await sendMessage(sonicWriteMsg(offset,payload)); const resp=await waitForMsg(MSG_WRITE_RESP,3500); if(!resp) continue; if(resp.data.length<2) continue; if(resp.data[0]!==(offset&0xFF)||resp.data[1]!==((offset>>8)&0xFF)) continue; return true; }
+  return false;
+}
+async function spiEraseSector(addr){
+  const a=(addr & ~0xFFF)>>>0;
+  const m=createMessage(SPI_WRITE,12); const v=new DataView(m.buffer); v.setUint32(4,a,true); v.setUint16(8,0,true); v.setUint16(10,0,true); v.setUint32(12,sessionTs>>>0,true); readBuffer.length=0; await sendMessage(m); const resp=await waitForMsg(SPI_WRITE_RESP,900); return !!resp;
+}
+async function tryEraseBootSectors(base, blobLen){
+  const start=(base & ~0xFFF)>>>0; const end=((base+blobLen+0xFFF) & ~0xFFF)>>>0;
+  const total=Math.max(1,(end-start)/0x1000);
+  const first=await spiEraseSector(start);
+  if(!first) return {tried:1, erased:0, total, skipped:true};
+  let erased=1;
+  for(let a=start+0x1000;a<end;a+=0x1000){ const ok=await spiEraseSector(a); if(ok) erased++; await sleep(40); }
+  return {tried:total, erased, total, skipped:false};
+}
+async function checkHeaderInRadio(base){
+  const h=await sonicRead(base,16); if(!h) return null;
+  const magic=String.fromCharCode(h[0],h[1],h[2],h[3]); const ver=h[4]; const rate=h[6]|(h[7]<<8); const len=h[8]|(h[9]<<8)|(h[10]<<16)|(h[11]<<24);
+  return {magic, ver, rate, len, raw:h};
+}
+function f4Header(cmd,addr,len){ const m=createMessage(cmd,10); const v=new DataView(m.buffer); v.setUint32(4,addr>>>0,true); v.setUint16(8,len,true); v.setUint32(10,sessionTs>>>0,true); return m; }
+async function f4Read(addr,len){
+  for(let r=0;r<3;r++){ if(r>0) await sleep(80); readBuffer.length=0; await sendMessage(f4Header(F_READ,addr,len)); const resp=await waitForMsg(F_READ_RESP,2000); if(!resp) continue; if(resp.data.length===7) continue; if(resp.data.length<7+len) continue; return resp.data.slice(7,7+len); }
+  return null;
+}
+async function f4Erase(addr){ readBuffer.length=0; const m=createMessage(F_ERASE,8); const v=new DataView(m.buffer); v.setUint32(4,addr>>>0,true); v.setUint32(8,sessionTs>>>0,true); await sendMessage(m); const resp=await waitForMsg(F_ERASE_RESP,3000); return !!resp; }
+async function f4Write(addr,payload){ const m=createMessage(F_WRITE,10+payload.length); const v=new DataView(m.buffer); v.setUint32(4,addr>>>0,true); v.setUint16(8,payload.length,true); v.setUint32(10,sessionTs>>>0,true); m.set(payload,14); readBuffer.length=0; await sendMessage(m); const resp=await waitForMsg(F_WRITE_RESP,2000); return !!resp; }
+
+function getSelectedPcm(){
+  if(!pcmU8) return null;
+  if(selStart<=0 && selEnd>=1) return pcmU8;
+  const a=Math.floor(selStart*pcmU8.length), b=Math.ceil(selEnd*pcmU8.length);
+  return pcmU8.slice(a, Math.max(a+1,b));
+}
+function updateSelInfo(){
+  if(!pcmU8) return;
+  const total=pcmU8.length/8000;
+  const s0=selStart*total, s1=selEnd*total, dur=s1-s0;
+  if(selStart<=0 && selEnd>=1) $('selInfo').textContent=T('selInfoWhole')+' ('+total.toFixed(2)+' s)';
+  else $('selInfo').textContent=T('selInfoFrag')+s0.toFixed(2)+' s - '+s1.toFixed(2)+' s ('+dur.toFixed(2)+' s)';
+}
+function drawWaveform(pcm){
+  const cv=$('waveCanvas'); if(!cv) return; cv.style.display='block'; $('waveHint').style.display='block'; $('selBox').style.display='block';
+  const ctx2=cv.getContext('2d'); const W=cv.width, H=cv.height;
+  ctx2.fillStyle='#0f172a'; ctx2.fillRect(0,0,W,H);
+  if(selStart>0 || selEnd<1){
+    ctx2.fillStyle='rgba(245,158,11,0.18)'; ctx2.fillRect(selStart*W,0,(selEnd-selStart)*W,H);
+    ctx2.fillStyle='rgba(0,0,0,0.35)'; if(selStart>0) ctx2.fillRect(0,0,selStart*W,H); if(selEnd<1) ctx2.fillRect(selEnd*W,0,(1-selEnd)*W,H);
+  }
+  ctx2.strokeStyle='#334155'; ctx2.beginPath(); ctx2.moveTo(0,H/2); ctx2.lineTo(W,H/2); ctx2.stroke();
+  ctx2.fillStyle='#22c55e';
+  const step=Math.max(1, Math.floor(pcm.length/W));
+  for(let x=0;x<W;x++){
+    let mn=255, mx=0;
+    for(let i=x*step;i<(x+1)*step && i<pcm.length;i++){ const v=pcm[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
+    const y1=H/2-(mx-128)/128*(H/2-4), y2=H/2-(mn-128)/128*(H/2-4);
+    ctx2.fillRect(x, Math.min(y1,y2), 1, Math.max(1, Math.abs(y2-y1)));
+  }
+  if(selStart>0 || selEnd<1){ ctx2.fillStyle='#f59e0b'; ctx2.fillRect(selStart*W,0,2,H); ctx2.fillRect(selEnd*W-2,0,2,H); }
+  ctx2.fillStyle='#94a3b8'; ctx2.font='12px system-ui'; ctx2.fillText((pcm.length/8000).toFixed(2)+' s', 8, 16);
+}
+function drawPlayhead(frac){
+  const cv=$('waveCanvas'); if(!cv || cv.style.display==='none') return;
+  if(pcmU8) drawWaveform(pcmU8);
+  const ctx2=cv.getContext('2d'); ctx2.fillStyle='#f59e0b'; ctx2.fillRect(Math.floor(frac*cv.width),0,2,cv.height);
+}
+
+$('fileInput').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    log(T('converting')+f.name+'…');
+    const buf=await f.arrayBuffer();
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+    if(!AC||!OAC) throw new Error('Browser does not support audio conversion. Use Chrome / Edge.');
+    const ctx=new AC(); let decoded;
+    try{ decoded=await ctx.decodeAudioData(buf.slice(0)); }catch(err){ try{ ctx.close(); }catch(_){} throw new Error('Could not read this audio file. Try WAV or another MP3.'); }
+    const totalSamples=Math.max(1, Math.ceil(decoded.duration*8000));
+    const off=new OAC(1, totalSamples, 8000);
+    const src2=off.createBufferSource(); src2.buffer=decoded; src2.connect(off.destination); src2.start();
+    const rendered=await off.startRendering(); try{ await ctx.close(); }catch(_){}
+    const ch=rendered.getChannelData(0);
+    // Preview shows the FULL file - upload will be trimmed to limits in buildBlob
+    const pcm=new Uint8Array(ch.length);
+    for(let i=0;i<ch.length;i++){ let v=Math.round((ch[i]+1)*127.5); if(v<0)v=0; if(v>255)v=255; pcm[i]=v; }
+    pcmU8=pcm; pcmName=f.name; selStart=0; selEnd=1; updateSelInfo(); drawWaveform(pcm);
+    const lim=blobLimit(); const wasTrimmed=pcm.length>lim;
+    $('fileInfo').textContent=f.name+' - '+(pcm.length/8000).toFixed(2)+' s, '+pcm.length+' PCM bytes. Limit for this address/size: '+lim+' B PCM'+(wasTrimmed ? T('selWillTrim') : T('selFits'))+' Ready to upload.';
+    const prev=$('preview'); prev.style.display='block'; prev.src=URL.createObjectURL(f);
+    prev.ontimeupdate=()=>{ if(prev.duration) drawPlayhead(prev.currentTime/prev.duration); };
+    const cv=$('waveCanvas');
+    const fracFromEvent=(ev)=>{ const r=cv.getBoundingClientRect(); return Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width)); };
+    cv.onmousedown=(ev)=>{ selDragging=true; selDragStart=fracFromEvent(ev); selStart=selDragStart; selEnd=selDragStart; };
+    cv.onmousemove=(ev)=>{ if(!selDragging) return; const f2=fracFromEvent(ev); selStart=Math.min(selDragStart,f2); selEnd=Math.max(selDragStart,f2); if(pcmU8) drawWaveform(pcmU8); };
+    cv.onmouseup=(ev)=>{
+      if(!selDragging) return; selDragging=false;
+      const f2=fracFromEvent(ev); selStart=Math.min(selDragStart,f2); selEnd=Math.max(selDragStart,f2);
+      if(selEnd-selStart<0.01){ selStart=0; selEnd=1; if(pcmU8) drawWaveform(pcmU8); updateSelInfo(); if(prev.duration){ prev.currentTime=fracFromEvent(ev)*prev.duration; prev.play().catch(()=>{}); } }
+      else{ if(pcmU8) drawWaveform(pcmU8); updateSelInfo(); log(T('selSet')+(selStart*pcmU8.length/8000).toFixed(2)+' s - '+(selEnd*pcmU8.length/8000).toFixed(2)+' s ('+((selEnd-selStart)*pcmU8.length/8000).toFixed(2)+' s).'); }
+    };
+    cv.onmouseleave=()=>{ if(selDragging){ selDragging=false; if(pcmU8){ drawWaveform(pcmU8); updateSelInfo(); } } };
+    $('uploadBtn').disabled=!port; $('verifyBtn').disabled=!port;
+    log(T('readyFile')+(pcm.length/8000).toFixed(2)+' s.','ok');
+  }catch(err){ log(T('convertFail')+err.message,'err'); }
+});
+function blobLimit(){
+  const mode=$('sizeMode').value; const base=parseAddr();
+  if(mode==='free') return Math.max(0,(0x018000-base)-16);
+  return Math.max(0,(0x020000-base)-16);
+}
+function buildBlob(){
+  const limit=blobLimit(); const selPcm=getSelectedPcm(); const take=Math.min(selPcm.length, limit);
+  const out=new Uint8Array(16+take);
+  out[0]=0x53; out[1]=0x59; out[2]=0x52; out[3]=0x53;
+  out[4]=1; out[5]=0; out[6]=8000 & 0xFF; out[7]=(8000>>8) & 0xFF;
+  out[8]=take & 0xFF; out[9]=(take>>8) & 0xFF; out[10]=(take>>16) & 0xFF; out[11]=(take>>24) & 0xFF;
+  out[12]=0; out[13]=0; out[14]=0; out[15]=0;
+  out.set(selPcm.slice(0,take),16);
+  return out;
+}
+function updateSizeInfo(){
+  try{
+    const base=parseAddr(); const lim=blobLimit();
+    const end=base+lim+16;
+    const mode=$('sizeMode').value;
+    const label = mode==='free' ? (curLang==='pl' ? 'Wolny' : 'Free') : (curLang==='pl' ? 'Powiększony Wolny+Log' : 'Enlarged Free+Log');
+    $('sizeInfo').textContent=(curLang==='pl' ? 'Adres 0x'+base.toString(16)+' - '+label+' PCM '+lim+' B, razem z nagłówkiem '+(lim+16)+' B, koniec na 0x'+end.toString(16)+'.' : 'Address 0x'+base.toString(16)+' - '+label+' PCM '+lim+' B, total with header '+(lim+16)+' B, ends at 0x'+end.toString(16)+'.');
+  }catch(e){ $('sizeInfo').textContent=''; }
+}
+async function doUpload(){
+  if(isBusy){ log(T('busy'),'err'); return; } if(!port){ log(T('needRadio'),'err'); return; } if(!pcmU8){ log(T('needFile'),'err'); return; }
+  isBusy=true; resetProg();
+  try{
+    await requestDeviceInfo(); detectMode(sessionFw); updateModeUI();
+    const base=parseAddr(); const blob=buildBlob();
+    const selPcm2=getSelectedPcm();
+    if(selStart>0 || selEnd<1) log(T('uploading')+'"'+pcmName+'" ('+blob.length+' B,'+T('fragment')+(selStart*pcmU8.length/8000).toFixed(2)+' s - '+(selEnd*pcmU8.length/8000).toFixed(2)+' s)'+T('toAddr')+base.toString(16)+' to 0x'+(base+blob.length).toString(16)+'…');
+    else log(T('uploading')+'"'+pcmName+'" ('+blob.length+' B)'+T('toAddr')+base.toString(16)+' to 0x'+(base+blob.length).toString(16)+'…');
+    if(detectedMode==='f4hwn') await uploadF4HWN(base,blob); else await uploadSonicFalcon(base,blob);
+    log(T('verifying'),'ok');
+    const ok=await doVerify(base,blob,true);
+    if(ok){ log(T('doneRestart'),'ok'); try{ readBuffer.length=0; await sendMessage(createMessage(MSG_RESET,0)); }catch(e){} await sleep(1200); setProg(100,'Done'); log(T('done'),'ok'); }
+    else log(T('verifyFail'),'err');
+  }catch(e){ log(T('uploadFail')+e.message,'err'); } finally{ isBusy=false; }
+}
+async function uploadF4HWN(base,blob){
+  log('Erasing area…');
+  for(let a=base;a<base+blob.length;a+=4096){ const ok=await f4Erase(a); if(!ok) throw new Error('Erase failed.'); }
+  for(let off=0;off<blob.length;off+=CHUNK){ const chunk=blob.slice(off,off+CHUNK); const ok=await f4Write(base+off,chunk); if(!ok) throw new Error('Write failed at '+off+' B.'); setProg((off/blob.length)*85,'Writing… '+off+'/'+blob.length+' B'); }
+}
+async function uploadSonicFalcon(base,blob){
+  const pre=await sonicRead(base,16);
+  if(!pre) throw new Error('Radio does not answer read. Reconnect.');
+  if(!pre.every(b=>b===0xFF)){ log(T('areaNotEmpty')); const er=await tryEraseBootSectors(base, blob.length); if(er.erased>0) log(T('erased')+er.erased+'/'+er.total+T('sectors')); else log(T('noErase')); }
+  else log(T('areaEmpty'));
+  const S_CHUNK=64;
+  for(let off=0;off<blob.length;off+=S_CHUNK){
+    let chunk=blob.slice(off,off+S_CHUNK);
+    if(chunk.length%8!==0){ const pad=new Uint8Array(Math.ceil(chunk.length/8)*8); pad.fill(0xFF); pad.set(chunk); chunk=pad; }
+    const ok=await sonicWrite(base+off, chunk);
+    if(!ok){ log('Chunk at '+off+' B got no answer - waiting 400 ms and retrying…'); await sleep(400); const ok2=await sonicWrite(base+off, chunk); if(!ok2) throw new Error('Write failed at '+off+' B.'); }
+    await sleep(40); setProg((off/blob.length)*85,'Writing… '+off+'/'+blob.length+' B ('+detectedMode+')');
+  }
+}
+async function doVerify(base,blob,silent){
+  let bad=0; const V_CHUNK=detectedMode==='f4hwn' ? CHUNK : 64;
+  for(let off=0;off<blob.length;off+=V_CHUNK){
+    const exp=blob.slice(off,off+V_CHUNK); let got=null;
+    if(detectedMode==='f4hwn') got=await f4Read(base+off, exp.length); else got=await sonicRead(base+off, exp.length);
+    if(!got){ bad+=exp.length; continue; }
+    for(let i=0;i<exp.length;i++) if(got[i]!==exp[i]) bad++;
+    setProg(85+(off/blob.length)*15,'Verifying…');
+  }
+  setProg(100,'');
+  if(!silent) log(bad===0 ? T('verifyOk') : T('verifyFail'),'ok');
+  return bad===0;
+}
+$('connectBtn').addEventListener('click', async()=>{ if(isBusy) return; isBusy=true; try{ await connect(); }catch(e){ if(e && (e.name==='AbortError' || /No port selected/i.test(e.message))) log(T('noPort')); else log(T('connectFail')+e.message,'err'); } finally{ isBusy=false; } });
+$('disconnectBtn').addEventListener('click', disconnect);
+$('uploadBtn').addEventListener('click', doUpload);
+$('verifyBtn').addEventListener('click', async()=>{ if(isBusy){ log(T('busy'),'err'); return; } if(!port){ log(T('needRadio'),'err'); return; } if(!pcmU8){ log(T('needFile'),'err'); return; } isBusy=true; try{ await requestDeviceInfo(); detectMode(sessionFw); const base=parseAddr(); const blob=buildBlob(); const ok=await doVerify(base,blob,false); if(ok) log(T('verifyOk'),'ok'); }catch(e){ log('Verify failed: '+e.message,'err'); } finally{ isBusy=false; } });
+$('checkHeaderBtn').addEventListener('click', async()=>{
+  if(isBusy){ log(T('busy'),'err'); return; } if(!port){ log(T('needRadio'),'err'); return; } isBusy=true;
+  try{
+    await requestDeviceInfo(); detectMode(sessionFw); updateModeUI();
+    const base=parseAddr(); const h=await checkHeaderInRadio(base);
+    if(!h){ log('Could not read header.','err'); return; }
+    if(h.magic!=='SYRS'){ log(T('noSyrs')+base.toString(16)+' - no sound or wrong address. Header: '+Array.from(h.raw).map(b=>b.toString(16).padStart(2,'0')).join(' '),'err'); return; }
+    const okVer=h.ver===1, okRate=h.rate===8000, okLen=h.len>0 && h.len<=57328;
+    log(T('headerInRadio')+h.ver+(okVer?T('rateOk'):T('rateBad'))+', rate '+h.rate+' Hz '+(okRate?'OK':'BAD - should be 8000')+', PCM length '+h.len+' B '+(okLen?'OK':'BAD - should be >0')+'.');
+    if(!okVer || !okRate || !okLen) log(T('checkHeaderBad'),'err'); else log(T('checkHeaderOk'),'ok');
+  }catch(e){ log('Check failed: '+e.message,'err'); } finally{ isBusy=false; }
+});
+$('clearBootBtn').addEventListener('click', async()=>{
+  if(isBusy){ log(T('busy'),'err'); return; } if(!port){ log(T('needRadio'),'err'); return; } if(!confirm(T('clearOldConfirm'))) return; isBusy=true;
+  try{ await requestDeviceInfo(); detectMode(sessionFw); const base=parseAddr(); const er=await tryEraseBootSectors(base, 4096); if(er.erased>0) log(T('cleared'),'ok'); else log(T('clearFail'),'err'); }catch(e){ log('Clear failed: '+e.message,'err'); } finally{ isBusy=false; }
+});
+$('playSelBtn').addEventListener('click', async()=>{
+  if(!pcmU8) return;
+  try{
+    const sel=getSelectedPcm(); const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC(); await ctx.resume();
+    const buf=ctx.createBuffer(1, sel.length, 8000); const ch=buf.getChannelData(0);
+    for(let i=0;i<sel.length;i++) ch[i]=sel[i]/127.5-1;
+    const s=ctx.createBufferSource(); s.buffer=buf; s.connect(ctx.destination); s.start(); s.onended=()=>{ try{ ctx.close(); }catch(_){} };
+    log(T('selPlay')+(sel.length/8000).toFixed(2)+' s');
+  }catch(e){ log('Play failed: '+e.message,'err'); }
+});
+$('clearSelBtn').addEventListener('click', ()=>{ selStart=0; selEnd=1; if(pcmU8) drawWaveform(pcmU8); updateSelInfo(); log(T('selCleared')); });
+$('addrSelect').addEventListener('change', e=>{ $('addrCustom').style.display = e.target.value==='custom' ? 'block' : 'none'; updateSizeInfo(); });
+$('addrCustom').addEventListener('input', updateSizeInfo);
+$('sizeMode').addEventListener('change', updateSizeInfo);
+$('fwMode').addEventListener('change', ()=>{ if(sessionFw) detectMode(sessionFw); });
+$('langEnBtn').addEventListener('click', ()=>applyLang('en'));
+$('langPlBtn').addEventListener('click', ()=>applyLang('pl'));
+
+// --- Download: lista .bin i audio z tego samego folderu co HTML ---
+const DL_AUDIO_EXTS = ['mp3','wav','ogg','m4a','flac','aac','opus','wma'];
+function dlIsFw(name){ return name.toLowerCase().endsWith('.bin'); }
+function dlIsAudio(name){ const l=name.toLowerCase(); return DL_AUDIO_EXTS.some(e=>l.endsWith('.'+e)); }
+function dlRenderList(ulId, emptyId, files, isFw){
+  const ul=$(ulId); ul.innerHTML='';
+  const empty=$(emptyId);
+  if(!files || !files.length){ if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  // sortuj alfabetycznie, bez duplikatów
+  const uniq=[...new Set(files)].sort((a,b)=>a.localeCompare(b));
+  for(const f of uniq){
+    const li=document.createElement('li');
+    const a=document.createElement('a');
+    // f może być string (nazwa pliku -> względny link) albo {name, url}
+    if(typeof f==='string'){ a.href=f; a.textContent=f; a.setAttribute('download',''); }
+    else { a.href=f.url; a.textContent=f.name; a.setAttribute('download', f.name); }
+    a.style.color='#7dd3fc';
+    li.appendChild(a);
+    if(isFw){
+      const s=document.createElement('span'); s.textContent='  .bin'; s.style.color='var(--mut)'; li.appendChild(s);
+    }
+    ul.appendChild(li);
+  }
+}
+function dlRender(fwFiles, audioFiles){
+  dlRenderList('fwList','fwEmpty', fwFiles, true);
+  dlRenderList('audioList','audioEmpty', audioFiles, false);
+}
+async function dlScanFolder(){
+  let fw=[], audio=[];
+  // 1) manifest.json - opcjonalny, jeśli użytkownik go doda: ["firmware.bin","sound.mp3"]
+  try{
+    const r=await fetch('manifest.json');
+    if(r.ok){
+      const j=await r.json();
+      const arr=Array.isArray(j) ? j : (j.files||j.firmware||[]);
+      if(Array.isArray(arr)) for(const n of arr){ if(typeof n!=='string') continue; if(dlIsFw(n)) fw.push(n); else if(dlIsAudio(n)) audio.push(n); }
+      if(Array.isArray(j.audio)) for(const n of j.audio) if(dlIsAudio(n)) audio.push(n);
+      if(Array.isArray(j.firmware)) for(const n of j.firmware) if(dlIsFw(n)) fw.push(n);
+    }
+  }catch(e){}
+  // 2) listing katalogu - działa gdy HTML jest serwowane przez serwer z autoindex (np. python -m http.server, nginx)
+  if(!fw.length && !audio.length){
+    try{
+      const r=await fetch('./', {headers:{'Accept':'text/html'}});
+      if(r.ok){
+        const txt=await r.text();
+        // wyciągnij wszystkie href="..."
+        const re=/href=["']([^"']+)["']/gi; let m;
+        const seen=new Set();
+        while((m=re.exec(txt))!==null){
+          let href=decodeURIComponent(m[1]||'');
+          // odrzuć katalogi, query, bieżący plik
+          if(!href || href.endsWith('/') || href.startsWith('?') || href.startsWith('#') || href.includes('://')) continue;
+          // usuń ./ i parametry
+          href=href.split('?')[0].split('#')[0].replace(/^\.\//,'');
+          if(!href || href===location.pathname.split('/').pop()) continue;
+          if(seen.has(href)) continue; seen.add(href);
+          if(dlIsFw(href)) fw.push(href);
+          else if(dlIsAudio(href)) audio.push(href);
+        }
+      }
+    }catch(e){}
+  }
+  dlRender(fw, audio);
+  // jeśli nic nie znaleziono, pokaż hint - nie nadpisuj list błędem
+  return {fw, audio};
+}
+// Folder picker - działa też przy file:// : wybierasz folder, a linki budowane są z lokalnych plików
+$('chooseFolderBtn').addEventListener('click', ()=>{ $('folderPicker').click(); });
+$('folderPicker').addEventListener('change', (e)=>{
+  const files=[...e.target.files];
+  const fw=[], audio=[];
+  for(const f of files){
+    const name=f.webkitRelativePath ? f.webkitRelativePath.split('/').pop() : f.name;
+    const url=URL.createObjectURL(f);
+    if(dlIsFw(name)) fw.push({name, url});
+    else if(dlIsAudio(name)) audio.push({name, url});
+  }
+  dlRender(fw, audio);
+  // wyczyść input żeby dało się wybrać ten sam folder drugi raz
+  e.target.value='';
+});
+$('scanFolderBtn').addEventListener('click', ()=>{ dlScanFolder(); });
+// skan przy starcie - nie blokuje reszty strony
+dlScanFolder();
+
+
+applyLang(curLang);
+updateSizeInfo();
+if(!('serial' in navigator)) log(T('noSerial'),'err'); else log(T('ready'));
+</script>
+</body>
+</html>

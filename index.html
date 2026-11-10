@@ -41,6 +41,21 @@ audio{width:100%;margin-top:8px}
 .langrow button.active{background:var(--acc);color:#052e16}
 .dl-list{margin:0;padding-left:18px;line-height:1.9}
 .dl-list a{color:#7dd3fc}
+.editor-grid{display:grid;gap:12px}
+.ed-block{background:#0f172a;border:1px solid var(--line);border-radius:10px;padding:12px}
+.ed-block h3{font-size:14px;margin:0 0 8px}
+.ed-block p{margin:0 0 10px}
+.slider-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0}
+.slider-row label{flex:0 0 170px}
+.slider-row input[type=range]{flex:1;min-width:160px;accent-color:var(--acc)}
+.slider-val{font-weight:700;font-size:13px;min-width:64px;text-align:right}
+.stat{font-size:13px;line-height:1.6;background:#0f172a;border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat b{color:var(--txt)}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt);margin:6px 0}
+.chk input{accent-color:var(--acc);width:16px;height:16px}
+.dropzone{border:1px dashed #475569;border-radius:10px;padding:12px}
+.dropzone.drag{border-color:var(--acc);background:#052e16}
+.badge-offline{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#14532d;color:#bbf7d0;margin-left:6px}
 .dl-list .sz{color:var(--mut);font-size:12px}
 </style>
 </head>
@@ -107,9 +122,10 @@ audio{width:100%;margin-top:8px}
 </div>
 
 <div class="card">
-<h2 data-i18n="step2">2. Choose sound</h2>
+<h2><span data-i18n="step2">2. Choose sound</span> <span class="badge-offline" data-i18n="noRadioNeeded">no radio needed</span></h2>
 <p data-i18n="step2Desc">MP3, WAV or other audio file. The preview shows the full file, upload will be trimmed to the set limits.</p>
-<div class="row"><input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac"></div>
+<p class="small" data-i18n="step2NoRadio">Converter and editor work without a radio. Connect the radio only for Upload / Verify / Check / Clear in step 3.</p>
+<div class="dropzone" id="dropZone"><div class="row"><input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac"></div><div class="small" data-i18n="dropHint">Or drag &amp; drop an audio file here.</div></div>
 <div id="fileInfo" class="fileinfo" data-i18n="noFile">No file selected.</div>
 <canvas id="waveCanvas" width="720" height="120" style="width:100%;height:120px;background:#0f172a;border:1px solid #334155;border-radius:10px;display:none;cursor:crosshair;touch-action:none"></canvas>
 <div id="waveHint" class="small" style="display:none" data-i18n="waveHint">Drag on the waveform to select a fragment to upload. Click without dragging to listen from that point.</div>
@@ -118,6 +134,36 @@ audio{width:100%;margin-top:8px}
 <div class="row"><button id="playSelBtn" class="ghost" data-i18n="playSel">Play selected</button><button id="clearSelBtn" class="ghost" data-i18n="clearSel">Clear selection (whole)</button></div>
 </div>
 <audio id="preview" controls style="display:none"></audio>
+</div>
+
+<div class="card" id="editorCard">
+<h2><span data-i18n="editorTitle">2b. Audio editor</span> <span class="badge-offline" data-i18n="noRadioNeeded2">no radio needed</span></h2>
+<p data-i18n="editorDesc">Edit the loaded sound before upload. Edits apply to the file that will be uploaded and to the downloaded .bin / .wav. You can undo with Reset.</p>
+<div id="audioStats" class="stat" data-i18n="editorNoFile">No file loaded yet - choose a sound in step 2.</div>
+<div class="editor-grid" style="margin-top:12px">
+<div class="ed-block">
+<h3 data-i18n="gainTitle">🔊 Volume / Gain</h3>
+<p class="small" data-i18n="gainDesc">Boost a quiet recording. +6 dB = about 2x louder. If the meter hits 0 dB, the sound will clip - use Normalize instead.</p>
+<div class="slider-row"><label data-i18n="gainLabel">Gain:</label><input type="range" id="gainSlider" min="-12" max="18" step="0.5" value="0" disabled><span class="slider-val" id="gainVal">0 dB</span><button id="applyGainBtn" class="ghost" disabled data-i18n="applyGain">Apply gain</button></div>
+<div class="small" id="gainHint"></div>
+</div>
+<div class="ed-block">
+<h3 data-i18n="normTitle">📈 Normalization</h3>
+<p class="small" data-i18n="normDesc">Sets the loudest peak to the chosen level. Best way to make a quiet file loud without clipping.</p>
+<div class="slider-row"><label data-i18n="normLabel">Target peak:</label><select id="normTarget" disabled><option value="-1" selected>-1 dB (recommended)</option><option value="-3">-3 dB</option><option value="0">0 dB (max)</option><option value="-6">-6 dB</option></select><button id="normalizeBtn" class="blue" disabled data-i18n="normalizeBtn">Normalize</button></div>
+</div>
+<div class="ed-block">
+<h3 data-i18n="silenceTitle">✂️ Trim silence</h3>
+<p class="small" data-i18n="silenceDesc">Removes silence so the radio does not wait. Threshold = what counts as silence. Min. silence = how long silence must last to be cut.</p>
+<div class="slider-row"><label data-i18n="silenceThresholdLabel">Silence threshold:</label><input type="range" id="silenceThreshold" min="-50" max="-20" step="1" value="-35" disabled><span class="slider-val" id="silenceThresholdVal">-35 dB</span></div>
+<div class="slider-row"><label data-i18n="minSilenceLabel">Min. silence to cut:</label><input type="range" id="minSilence" min="100" max="1000" step="50" value="250" disabled><span class="slider-val" id="minSilenceVal">250 ms</span></div>
+<label class="chk"><input type="checkbox" id="trimEndsChk" checked disabled> <span data-i18n="trimEnds">Trim silence at start and end</span></label>
+<label class="chk"><input type="checkbox" id="trimGapsChk" disabled> <span data-i18n="trimGaps">Also cut silent gaps inside (leaves a short 80 ms pause)</span></label>
+<div class="row"><button id="trimSilenceBtn" class="blue" disabled data-i18n="trimSilenceBtn">Trim silence</button><button id="autoFixBtn" class="ghost" disabled data-i18n="autoFix">✨ Auto: trim silence + normalize</button></div>
+</div>
+</div>
+<div class="row" style="margin-top:12px"><button id="resetAudioBtn" class="ghost" disabled data-i18n="resetAudio">↩ Reset to original</button><button id="downloadBinBtn" class="primary" disabled data-i18n="downloadBin">⬇ Download converted .bin (no radio)</button><button id="downloadWavBtn" class="ghost" disabled data-i18n="downloadWav">⬇ Download edited .wav (8 kHz)</button></div>
+<p class="small" data-i18n="editorNote">Tip: first Trim silence, then Normalize. The .bin file respects your selection on the waveform and the size limit from Upload settings.</p>
 </div>
 
 <div class="card">
@@ -195,7 +241,15 @@ areaEmpty:"Area is empty (all FF) - writing directly.",areaNotEmpty:"Area is not
 erased:"Erased ",sectors:" sectors - write will be clean.",noErase:"The radio does not support erase 0x0521 (no answer, normal in SONIC/FALCON) - uploading without erase.",
 fragment:" fragment ",selInfoWhole:"Selected: whole file",selInfoFrag:"Selected: ",selWillTrim:" - file will be trimmed to the limit.",selFits:" - fits fully.",selPlay:"Playing selected: ",
 selCleared:"Selection cleared - whole file will be uploaded.",selSet:"Selected fragment: ",
-disconnected:"Disconnected."
+disconnected:"Disconnected.",
+noRadioNeeded:"no radio needed",noRadioNeeded2:"no radio needed",step2NoRadio:"Converter and editor work without a radio. Connect the radio only for Upload / Verify / Check / Clear in step 3.",dropHint:"Or drag & drop an audio file here.",
+editorTitle:"2b. Audio editor",editorDesc:"Edit the loaded sound before upload. Edits apply to the file that will be uploaded and to the downloaded .bin / .wav. You can undo with Reset.",editorNoFile:"No file loaded yet - choose a sound in step 2.",
+gainTitle:"Volume / Gain",gainDesc:"Boost a quiet recording. +6 dB = about 2x louder. If the meter hits 0 dB, the sound will clip - use Normalize instead.",gainLabel:"Gain:",applyGain:"Apply gain",gainHint:"",
+normTitle:"Normalization",normDesc:"Sets the loudest peak to the chosen level. Best way to make a quiet file loud without clipping.",normLabel:"Target peak:",normalizeBtn:"Normalize",
+silenceTitle:"Trim silence",silenceDesc:"Removes silence so the radio does not wait. Threshold = what counts as silence. Min. silence = how long silence must last to be cut.",silenceThresholdLabel:"Silence threshold:",minSilenceLabel:"Min. silence to cut:",trimEnds:"Trim silence at start and end",trimGaps:"Also cut silent gaps inside (leaves a short 80 ms pause)",trimSilenceBtn:"Trim silence",autoFix:"Auto: trim silence + normalize",
+resetAudio:"Reset to original",downloadBin:"Download converted .bin (no radio)",downloadWav:"Download edited .wav (8 kHz)",editorNote:"Tip: first Trim silence, then Normalize. The .bin file respects your selection on the waveform and the size limit from Upload settings.",
+gainApplied:"Gain applied: ",normalizeApplied:"Normalized to ",normalizeSilent:"File is silent - nothing to normalize.",trimApplied:"Silence trimmed: removed ",trimNoSilence:"No silence found to trim with these settings.",resetDone:"Restored original file.",clippedWarn:" Warning: some samples clipped at 0 dB - lower the gain or use Normalize.",downloadBinDone:"Converted .bin downloaded - you can upload it later when the radio is connected.",downloadWavDone:"Edited .wav downloaded.",
+editorStats:"Duration: ",peakLabel:"Peak: ",rmsLabel:"RMS: ",samplesLabel:"Samples: "
 },
 pl:{
 language:"Język:",titleSuffix:"- dźwięk startowy do radia",subtitle:"Quansheng UV-K5 / UV-K1 - FALCON, SONIC 1K / 4K, F4HWN. Wybierz plik, wgraj, gotowe.",
@@ -225,7 +279,15 @@ areaEmpty:"Obszar pusty (same FF) - piszę od razu.",areaNotEmpty:"Obszar nie by
 erased:"Skasowano ",sectors:" sektorów - zapis będzie czysty.",noErase:"Radio nie obsługuje kasowania 0x0521 (brak odpowiedzi, to normalne w SONIC/FALCON) - wgrywam bez kasowania.",
 fragment:" fragment ",selInfoWhole:"Zaznaczone: całość",selInfoFrag:"Zaznaczone: ",selWillTrim:" - plik będzie przycięty do limitu.",selFits:" - zmieści się w całości.",selPlay:"Odtwarzam zaznaczone: ",
 selCleared:"Wyczyszczono zaznaczenie - będzie wgrywana całość.",selSet:"Zaznaczono fragment: ",
-disconnected:"Rozłączono."
+disconnected:"Rozłączono.",
+noRadioNeeded:"bez radia",noRadioNeeded2:"bez radia",step2NoRadio:"Konwerter i edytor działają bez radia. Radio podłącz tylko do Wgrywania / Weryfikacji / Sprawdzania / Czyszczenia w kroku 3.",dropHint:"Albo przeciągnij i upuść plik audio tutaj.",
+editorTitle:"2b. Edytor dźwięku",editorDesc:"Edytuj wczytany dźwięk przed wgraniem. Zmiany dotyczą pliku, który będzie wgrany, oraz pobranych .bin / .wav. Cofniesz je przyciskiem Reset.",editorNoFile:"Nie wczytano pliku - wybierz dźwięk w kroku 2.",
+gainTitle:"Głośność / Wzmocnienie",gainDesc:"Podgłośnij ciche nagranie. +6 dB to ok. 2x głośniej. Jak wskaźnik dojdzie do 0 dB, dźwięk będzie przesterowany - użyj wtedy Normalizacji.",gainLabel:"Wzmocnienie:",applyGain:"Zastosuj wzmocnienie",
+normTitle:"Normalizacja",normDesc:"Ustawia najgłośniejszy szczyt na wybrany poziom. Najlepszy sposób, żeby cichy plik był głośny bez przesteru.",normLabel:"Docelowy szczyt:",normalizeBtn:"Normalizuj",
+silenceTitle:"Wycinanie ciszy",silenceDesc:"Usuwa ciszę, żeby radio nie czekało. Próg = co uznajemy za ciszę. Min. cisza = jak długa cisza musi być, żeby ją wyciąć.",silenceThresholdLabel:"Próg ciszy:",minSilenceLabel:"Min. cisza do wycięcia:",trimEnds:"Wytnij ciszę na początku i na końcu",trimGaps:"Wytnij też ciche przerwy w środku (zostawia krótką pauzę 80 ms)",trimSilenceBtn:"Wytnij ciszę",autoFix:"Auto: wytnij ciszę + normalizuj",
+resetAudio:"Cofnij do oryginału",downloadBin:"Pobierz przekonwertowany .bin (bez radia)",downloadWav:"Pobierz edytowany .wav (8 kHz)",editorNote:"Wskazówka: najpierw Wytnij ciszę, potem Normalizuj. Plik .bin uwzględnia zaznaczenie na wykresie i limit rozmiaru z Ustawień wgrywania.",
+gainApplied:"Zastosowano wzmocnienie: ",normalizeApplied:"Znormalizowano do ",normalizeSilent:"Plik to cisza - nie ma czego normalizować.",trimApplied:"Wycięto ciszę: usunięto ",trimNoSilence:"Nie znaleziono ciszy do wycięcia przy tych ustawieniach.",resetDone:"Przywrócono oryginalny plik.",clippedWarn:" Uwaga: część próbek przesterowana na 0 dB - zmniejsz wzmocnienie albo użyj Normalizacji.",downloadBinDone:"Pobrano przekonwertowany .bin - możesz go wgrać później, jak podłączysz radio.",downloadWavDone:"Pobrano edytowany .wav.",
+editorStats:"Czas: ",peakLabel:"Szczyt: ",rmsLabel:"RMS: ",samplesLabel:"Próbek: "
 }
 };
 let curLang = (navigator.language||'en').toLowerCase().startsWith('pl') ? 'pl' : 'en';
@@ -239,7 +301,7 @@ function applyLang(lang){
   $('langEnBtn').classList.toggle('active', lang==='en');
   $('langPlBtn').classList.toggle('active', lang==='pl');
   if($('addrCustom')) $('addrCustom').placeholder = lang==='pl' ? 'np. 0x012000' : 'e.g. 0x012000';
-  updateSizeInfo(); updateSelInfo();
+  updateSizeInfo(); updateSelInfo(); if(typeof updateAudioStats==='function') updateAudioStats();
   document.documentElement.lang=lang;
 }
 const OBFUS=[0x16,0x6C,0x14,0xE6,0x2E,0x91,0x0D,0x40,0x21,0x35,0xD5,0x40,0x13,0x03,0xE9,0x80];
@@ -248,6 +310,7 @@ const F_READ=0x0738, F_READ_RESP=0x0739, F_ERASE=0x073A, F_ERASE_RESP=0x073B, F_
 const SPI_WRITE=0x0521, SPI_WRITE_RESP=0x0522;
 const TS=0x6457396A; const CHUNK=128;
 let port=null, writer=null, readBuffer=[], sessionTs=TS, sessionFw='', detectedMode='sonic1k', pcmU8=null, pcmName='', isBusy=false;
+let origFloat=null, workFloat=null, undoStack=[];
 let selStart=0, selEnd=1, selDragging=false, selDragStart=0; let lastProg=0;
 const $=id=>document.getElementById(id);
 function log(m, kind=''){ const d=document.createElement('div'); if(kind) d.className=kind; d.textContent=m; $('log').appendChild(d); $('log').scrollTop=$('log').scrollHeight; }
@@ -284,7 +347,7 @@ async function connect(){
 }
 async function disconnect(){
   try{ await writer.close(); await port.close(); }catch(e){}
-  port=null; isBusy=false; $('connectBtn').disabled=false; $('disconnectBtn').disabled=true; $('uploadBtn').disabled=true; $('verifyBtn').disabled=true; $('checkHeaderBtn').disabled=true; $('clearBootBtn').disabled=true;
+  port=null; isBusy=false; $('connectBtn').disabled=false; $('disconnectBtn').disabled=true; $('uploadBtn').disabled=!pcmU8; $('verifyBtn').disabled=!pcmU8; $('checkHeaderBtn').disabled=true; $('clearBootBtn').disabled=true;
   $('devStatus').textContent=T('notConnected'); $('devStatus').className='pill'; log(T('disconnected'));
 }
 async function requestDeviceInfo(){
@@ -379,6 +442,147 @@ function drawPlayhead(frac){
   if(pcmU8) drawWaveform(pcmU8);
   const ctx2=cv.getContext('2d'); ctx2.fillStyle='#f59e0b'; ctx2.fillRect(Math.floor(frac*cv.width),0,2,cv.height);
 }
+// ---------- Audio editor (works fully offline, no radio needed) ----------
+function dbFromLinear(v){ return v<=0.0000001 ? -Infinity : 20*Math.log10(v); }
+function linearFromDb(db){ return Math.pow(10, db/20); }
+function floatToPcm(floatArr){
+  const pcm=new Uint8Array(floatArr.length);
+  for(let i=0;i<floatArr.length;i++){ let v=Math.round((Math.max(-1,Math.min(1,floatArr[i]))+1)*127.5); if(v<0)v=0; if(v>255)v=255; pcm[i]=v; }
+  return pcm;
+}
+function audioStats(floatArr){
+  if(!floatArr || !floatArr.length) return null;
+  let peak=0, sum=0;
+  for(let i=0;i<floatArr.length;i++){ const a=Math.abs(floatArr[i]); if(a>peak) peak=a; sum+=floatArr[i]*floatArr[i]; }
+  const rms=Math.sqrt(sum/floatArr.length);
+  return {peak, rms, peakDb: dbFromLinear(peak), rmsDb: dbFromLinear(rms), duration: floatArr.length/8000};
+}
+function updateAudioStats(){
+  const el=$('audioStats'); if(!el) return;
+  if(!workFloat){ el.textContent=T('editorNoFile'); return; }
+  const s=audioStats(workFloat);
+  const peakTxt = s.peakDb===-Infinity ? '-inf dB' : s.peakDb.toFixed(1)+' dB';
+  const rmsTxt = s.rmsDb===-Infinity ? '-inf dB' : s.rmsDb.toFixed(1)+' dB';
+  const edited = origFloat && workFloat.length!==origFloat.length ? ' • '+(curLang==='pl'?'edytowany':'edited') : '';
+  el.innerHTML='<b>'+T('editorStats')+'</b>'+s.duration.toFixed(2)+' s'+edited+' &nbsp; <b>'+T('peakLabel')+'</b>'+peakTxt+' ('+Math.round(s.peak*100)+'%) &nbsp; <b>'+T('rmsLabel')+'</b>'+rmsTxt+' &nbsp; <b>'+T('samplesLabel')+'</b>'+workFloat.length;
+}
+function setEditorEnabled(on){
+  ['gainSlider','normTarget','silenceThreshold','minSilence','trimEndsChk','trimGapsChk','applyGainBtn','normalizeBtn','trimSilenceBtn','autoFixBtn','resetAudioBtn','downloadBinBtn','downloadWavBtn'].forEach(id=>{ const e=$(id); if(e) e.disabled=!on; });
+}
+function pushUndo(){
+  if(!workFloat) return;
+  undoStack.push(workFloat.slice());
+  if(undoStack.length>10) undoStack.shift();
+}
+function rebuildPcmFromWork(){
+  if(!workFloat) return;
+  pcmU8=floatToPcm(workFloat);
+  selStart=0; selEnd=1;
+  updateSelInfo(); drawWaveform(pcmU8); updateAudioStats();
+  const lim=blobLimit();
+  $('fileInfo').textContent=pcmName+' - '+(pcmU8.length/8000).toFixed(2)+' s, '+pcmU8.length+' PCM bytes. Limit: '+lim+' B PCM'+(pcmU8.length>lim ? T('selWillTrim') : T('selFits'))+' Ready.';
+  $('uploadBtn').disabled=!pcmU8; $('verifyBtn').disabled=!pcmU8;
+}
+function doApplyGain(gainDb, silent){
+  if(!workFloat) return;
+  pushUndo();
+  const g=linearFromDb(gainDb);
+  let clipped=0;
+  for(let i=0;i<workFloat.length;i++){ let v=workFloat[i]*g; if(v>1){ v=1; clipped++; } if(v<-1){ v=-1; clipped++; } workFloat[i]=v; }
+  rebuildPcmFromWork();
+  if(!silent){
+    let msg=T('gainApplied')+(gainDb>0?'+':'')+gainDb.toFixed(1)+' dB';
+    if(clipped>0) msg+=T('clippedWarn')+' ('+clipped+' '+ (curLang==='pl'?'próbek':'samples')+')';
+    log(msg, clipped>0?'err':'ok');
+  }
+  return clipped;
+}
+function doNormalize(targetDb, silent){
+  if(!workFloat) return;
+  const s=audioStats(workFloat);
+  if(!s || s.peak<0.00001){ if(!silent) log(T('normalizeSilent'),'err'); return; }
+  pushUndo();
+  const g=linearFromDb(targetDb)/s.peak;
+  for(let i=0;i<workFloat.length;i++){ let v=workFloat[i]*g; if(v>1)v=1; if(v<-1)v=-1; workFloat[i]=v; }
+  rebuildPcmFromWork();
+  if(!silent) log(T('normalizeApplied')+targetDb+' dB (gain '+(20*Math.log10(g)).toFixed(1)+' dB).','ok');
+}
+function doTrimSilence(silent){
+  if(!workFloat) return 0;
+  const thrDb=parseFloat($('silenceThreshold').value);
+  const minMs=parseFloat($('minSilence').value);
+  const trimEnds=$('trimEndsChk').checked, trimGaps=$('trimGapsChk').checked;
+  const thr=linearFromDb(thrDb);
+  const minSilSamples=Math.round(minMs/1000*8000);
+  const keepGap=Math.round(0.08*8000); // 80 ms
+  const before=workFloat.length;
+  // find first / last above threshold
+  let first=-1, last=-1;
+  for(let i=0;i<workFloat.length;i++){ if(Math.abs(workFloat[i])>=thr){ if(first===-1) first=i; last=i; } }
+  if(first===-1){ if(!silent) log(T('trimNoSilence'),'err'); return 0; }
+  let start = trimEnds ? first : 0;
+  let end = trimEnds ? last+1 : workFloat.length;
+  if(!trimGaps){
+    if(start===0 && end===workFloat.length){ if(!silent) log(T('trimNoSilence')); return 0; }
+    pushUndo();
+    workFloat=workFloat.slice(start,end);
+    rebuildPcmFromWork();
+    const removed=before-workFloat.length;
+    if(!silent) log(T('trimApplied')+(removed/8000).toFixed(2)+' s ('+removed+' '+ (curLang==='pl'?'próbek':'samples')+').','ok');
+    return removed;
+  }
+  // trim gaps inside: walk through [start,end), keep only keepGap samples of long silent runs
+  pushUndo();
+  const out=[];
+  let i=start;
+  while(i<end){
+    if(Math.abs(workFloat[i])<thr){
+      let j=i;
+      while(j<end && Math.abs(workFloat[j])<thr) j++;
+      const run=j-i;
+      if(run>=minSilSamples){
+        const keep=Math.min(keepGap, run);
+        for(let k=0;k<keep;k++) out.push(workFloat[i+k]);
+      } else {
+        for(let k=i;k<j;k++) out.push(workFloat[k]);
+      }
+      i=j;
+    } else {
+      out.push(workFloat[i]); i++;
+    }
+  }
+  workFloat=Float32Array.from(out);
+  rebuildPcmFromWork();
+  const removed=before-workFloat.length;
+  if(removed===0){ if(!silent) log(T('trimNoSilence')); }
+  else if(!silent) log(T('trimApplied')+(removed/8000).toFixed(2)+' s ('+removed+' '+ (curLang==='pl'?'próbek':'samples')+').','ok');
+  return removed;
+}
+function downloadBlob(blob, filename){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function downloadBinFile(){
+  if(!pcmU8){ log(T('needFile'),'err'); return; }
+  const blob=buildBlob();
+  const base=(pcmName||'sound').replace(/\.[^.]+$/,'');
+  downloadBlob(new Blob([blob]), base+'.bin');
+  log(T('downloadBinDone'),'ok');
+}
+function downloadWavFile(){
+  if(!workFloat){ log(T('needFile'),'err'); return; }
+  // 8 kHz, 8-bit unsigned WAV from edited audio (selection respected)
+  const sel=getSelectedPcm();
+  const dataLen=sel.length;
+  const buf=new ArrayBuffer(44+dataLen); const v=new DataView(buf);
+  const w=(off,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(off+i, s.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4,36+dataLen,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true); v.setUint16(34,8,true); w(36,'data'); v.setUint32(40,dataLen,true);
+  for(let i=0;i<dataLen;i++) v.setUint8(44+i, sel[i]);
+  const base=(pcmName||'sound').replace(/\.[^.]+$/,'');
+  downloadBlob(new Blob([buf],{type:'audio/wav'}), base+'_edited_8k.wav');
+  log(T('downloadWavDone'),'ok');
+}
+
 $('fileInput').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   try{
@@ -394,9 +598,9 @@ $('fileInput').addEventListener('change', async e=>{
     const src2=off.createBufferSource(); src2.buffer=decoded; src2.connect(off.destination); src2.start();
     const rendered=await off.startRendering(); try{ await ctx.close(); }catch(_){}
     const ch=rendered.getChannelData(0);
-    const pcm=new Uint8Array(ch.length);
-    for(let i=0;i<ch.length;i++){ let v=Math.round((ch[i]+1)*127.5); if(v<0)v=0; if(v>255)v=255; pcm[i]=v; }
-    pcmU8=pcm; pcmName=f.name; selStart=0; selEnd=1; updateSelInfo(); drawWaveform(pcm);
+    origFloat=Float32Array.from(ch); workFloat=Float32Array.from(ch); undoStack=[];
+    const pcm=floatToPcm(workFloat);
+    pcmU8=pcm; pcmName=f.name; selStart=0; selEnd=1; updateSelInfo(); drawWaveform(pcm); updateAudioStats(); setEditorEnabled(true);
     const lim=blobLimit(); const wasTrimmed=pcm.length>lim;
     $('fileInfo').textContent=f.name+' - '+(pcm.length/8000).toFixed(2)+' s, '+pcm.length+' PCM bytes. Limit: '+lim+' B PCM'+(wasTrimmed ? T('selWillTrim') : T('selFits'))+' Ready.';
     const prev=$('preview'); prev.style.display='block'; prev.src=URL.createObjectURL(f);
@@ -412,7 +616,7 @@ $('fileInput').addEventListener('change', async e=>{
       else{ if(pcmU8) drawWaveform(pcmU8); updateSelInfo(); log(T('selSet')+(selStart*pcmU8.length/8000).toFixed(2)+' s - '+(selEnd*pcmU8.length/8000).toFixed(2)+' s ('+((selEnd-selStart)*pcmU8.length/8000).toFixed(2)+' s).'); }
     };
     cv.onmouseleave=()=>{ if(selDragging){ selDragging=false; if(pcmU8){ drawWaveform(pcmU8); updateSelInfo(); } } };
-    $('uploadBtn').disabled=!port; $('verifyBtn').disabled=!port;
+    $('uploadBtn').disabled=!pcmU8; $('verifyBtn').disabled=!pcmU8; // converter works without radio - radio only needed to actually upload
     log(T('readyFile')+(pcm.length/8000).toFixed(2)+' s.','ok');
   }catch(err){ log(T('convertFail')+err.message,'err'); }
 });
@@ -522,6 +726,28 @@ $('sizeMode').addEventListener('change', updateSizeInfo);
 $('fwMode').addEventListener('change', ()=>{ if(sessionFw) detectMode(sessionFw); });
 $('langEnBtn').addEventListener('click', ()=>applyLang('en'));
 $('langPlBtn').addEventListener('click', ()=>applyLang('pl'));
+// --- Editor + drag&drop wiring (no radio needed) ---
+$('gainSlider').addEventListener('input', e=>{ $('gainVal').textContent=(parseFloat(e.target.value)>=0?'+':'')+parseFloat(e.target.value).toFixed(1)+' dB'; });
+$('silenceThreshold').addEventListener('input', e=>{ $('silenceThresholdVal').textContent=parseFloat(e.target.value)+' dB'; });
+$('minSilence').addEventListener('input', e=>{ $('minSilenceVal').textContent=parseFloat(e.target.value)+' ms'; });
+$('applyGainBtn').addEventListener('click', ()=>{ if(!workFloat) return; const g=parseFloat($('gainSlider').value); doApplyGain(g,false); $('gainSlider').value='0'; $('gainVal').textContent='0 dB'; });
+$('normalizeBtn').addEventListener('click', ()=>{ if(!workFloat) return; doNormalize(parseFloat($('normTarget').value), false); });
+$('trimSilenceBtn').addEventListener('click', ()=>{ if(!workFloat) return; doTrimSilence(false); });
+$('autoFixBtn').addEventListener('click', ()=>{ if(!workFloat) return; const removed=doTrimSilence(true); doNormalize(parseFloat($('normTarget').value), true); log((curLang==='pl'?'Auto: wycięto ':'Auto: trimmed ')+(removed/8000).toFixed(2)+' s, '+T('normalizeApplied')+parseFloat($('normTarget').value)+' dB.','ok'); });
+$('resetAudioBtn').addEventListener('click', ()=>{ if(!origFloat) return; pushUndo(); workFloat=Float32Array.from(origFloat); rebuildPcmFromWork(); log(T('resetDone'),'ok'); });
+$('downloadBinBtn').addEventListener('click', downloadBinFile);
+$('downloadWavBtn').addEventListener('click', downloadWavFile);
+// Drag & drop - also works without radio
+(function(){
+  const dz=$('dropZone'); if(!dz) return;
+  const fi=$('fileInput');
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e=>{
+    const f=e.dataTransfer.files && e.dataTransfer.files[0]; if(!f) return;
+    const dt=new DataTransfer(); dt.items.add(f); fi.files=dt.files; fi.dispatchEvent(new Event('change'));
+  });
+})();
 applyLang(curLang);
 updateSizeInfo();
 if(!('serial' in navigator)) log(T('noSerial'),'err'); else log(T('ready'));
